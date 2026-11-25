@@ -25,12 +25,12 @@ jobs:
           espeak-ng -v en-us -s 140 -w a.wav "nova" && sox a.wav -r 16000 -c 1 -b 16 nova1.wav
           espeak-ng -v en-us -s 150 -w b.wav "hey nova" && sox b.wav -r 16000 -c 1 -b 16 nova2.wav
           espeak-ng -v en-us -s 150 -w c.wav "the weather is nice today" && sox c.wav -r 16000 -c 1 -b 16 other.wav
-          pip install -q vosk pynini
+          pip install -q vosk
       - name: Slim it (Nova only needs a tiny grammar, not the full English dictionary graph)
         run: |
           cp -r vosk-model full-model
           # keep only the word list from the 23 MB English language graph (the app uses its own tiny grammar)
-          python3 -c "import pynini; pynini.Fst.read('vosk-model/graph/Gr.fst').output_symbols().write_text('vosk-model/graph/words.txt')"
+          python3 tools/extract_words.py vosk-model/graph/Gr.fst vosk-model/graph/words.txt
           wc -l vosk-model/graph/words.txt
           rm -f vosk-model/graph/Gr.fst
           rm -rf vosk-model/rescore vosk-model/rnnlm
