@@ -18,6 +18,16 @@ class NovaService : Service() {
     companion object {
         private const val CH = "nova_listen"
         private var instance: NovaService? = null
+        private var lock: android.os.PowerManager.WakeLock? = null
+
+        /** Keeps the processor awake (screen can be off) so "Nova" is heard any time - only when the user wants that. */
+        fun applyWakeLock(c: Context) {
+            val want = Prefs.screenOffListen && Prefs.wakeWord && instance != null
+            if (want && lock?.isHeld != true) {
+                lock = c.getSystemService(android.os.PowerManager::class.java)
+                    .newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "nova:listen").apply { setReferenceCounted(false); acquire() }
+            } else if (!want) { lock?.let { if (it.isHeld) it.release() }; lock = null }
+        }
 
         fun start(c: Context) {
             if (!Nova.hasMic()) return
@@ -33,7 +43,7 @@ class NovaService : Service() {
     private val screen = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
-                Intent.ACTION_SCREEN_OFF -> if (!Prefs.screenOffListen && !Nova.active) Nova.stopMic()
+                Intent.ACTION_SCREEN_OFF -> if (!Prefs.screenOffListen && !Nova.active) Nova.stopMic() else Nova.startMic()
                 Intent.ACTION_SCREEN_ON -> Nova.startMic()
             }
         }
@@ -58,11 +68,13 @@ class NovaService : Service() {
             else startForeground(1, build())
         } catch (_: Exception) { stopSelf(); return START_NOT_STICKY }
         Nova.startMic()
+        applyWakeLock(this)
         return START_STICKY
     }
 
     override fun onDestroy() {
         instance = null
+        applyWakeLock(this)
         try { unregisterReceiver(screen) } catch (_: Exception) {}
         super.onDestroy()
     }

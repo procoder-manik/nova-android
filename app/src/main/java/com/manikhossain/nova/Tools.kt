@@ -131,6 +131,8 @@ class Tools(private val ctx: Context) {
         return try {
             ctx.startActivity(i)
             val o = JSONObject().put("status", ok)
+            val km = ctx.getSystemService(android.app.KeyguardManager::class.java)
+            if (km.isKeyguardLocked) o.put("note", "The phone is locked: it will appear after the user unlocks. Say so briefly.")
             if (!Settings.canDrawOverlays(ctx)) o.put("note", "If nothing opened, the user must allow 'Display over other apps' for Nova (Settings in Nova).")
             o
         } catch (e: Exception) {

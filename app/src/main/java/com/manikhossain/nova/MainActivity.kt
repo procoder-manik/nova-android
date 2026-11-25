@@ -132,7 +132,7 @@ class MainActivity : Activity() {
             if (s.has("mic_mode")) Prefs.micMode = s.optString("mic_mode", "near")
             if (s.has("floating_orb")) { Prefs.floatingOrb = s.optBoolean("floating_orb"); if (!Prefs.floatingOrb) FloatingOrb.hide() }
             if (s.has("orb_opacity")) { Prefs.orbOpacity = s.optInt("orb_opacity", 85); FloatingOrb.setOpacity(Prefs.orbOpacity) }
-            if (s.has("screen_off_listen")) Prefs.screenOffListen = s.optBoolean("screen_off_listen")
+            if (s.has("screen_off_listen")) { Prefs.screenOffListen = s.optBoolean("screen_off_listen"); NovaService.applyWakeLock(this@MainActivity) }
             runOnUiThread { NovaService.start(this@MainActivity); emit("refresh", JSONObject()) }
         }
 
