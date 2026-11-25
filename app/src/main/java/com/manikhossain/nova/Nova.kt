@@ -62,6 +62,7 @@ object Nova {
     private var modelIdx = 0
     private var reconnects = 0
     private var resumeHandle: String? = null
+    private var thinkOff = true               // answer without "thinking" first = much faster; falls back if a model refuses
     private var resumeTime = 0L
     private var lastActivity = 0L
     private val pending = ArrayList<String>()          // audio/text queued while connecting
@@ -99,6 +100,7 @@ object Nova {
 
     private fun setState(s: String, t: String = "") {
         state = s; stateText = t
+        FloatingOrb.state = s
         ui("state", JSONObject().put("state", s).put("text", t))
         NovaService.update()
     }
@@ -116,8 +118,12 @@ object Nova {
         thread(name = "mic") {
             val min = AudioRecord.getMinBufferSize(16000, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT)
             try {
-                val r = AudioRecord(MediaRecorder.AudioSource.VOICE_RECOGNITION, 16000, AudioFormat.CHANNEL_IN_MONO,
+                // VOICE_COMMUNICATION = the phone's "call" microphone processing: echo cancelling + noise
+                // suppression tuned for the voice right at the phone, so far-away voices and noise are much weaker.
+                val r = AudioRecord(MediaRecorder.AudioSource.VOICE_COMMUNICATION, 16000, AudioFormat.CHANNEL_IN_MONO,
                     AudioFormat.ENCODING_PCM_16BIT, maxOf(min, 6400))
+                try { if (android.media.audiofx.NoiseSuppressor.isAvailable()) android.media.audiofx.NoiseSuppressor.create(r.audioSessionId)?.enabled = true } catch (_: Exception) {}
+                try { if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) android.media.audiofx.AcousticEchoCanceler.create(r.audioSessionId)?.enabled = true } catch (_: Exception) {}
                 rec = r
                 r.startRecording()
                 val buf = ShortArray(1600)                  // 100 ms
@@ -138,20 +144,42 @@ object Nova {
     fun stopMic() { micOn = false }
 
     private var lvlT = 0L
+    private var noise = 200.0                 // learned background level of the room
+    private var gateOpen = 0                  // frames the voice gate stays open (hang-over keeps word endings)
+    private var prev: ByteArray? = null       // previous 100 ms, sent when the gate opens so first syllables aren't cut
+    private val zeros = ByteArray(3200)
+
+    /** Only the voice close to the phone passes; distant voices / TV / fan noise become silence. */
+    private fun gateThreshold(): Double = if (Prefs.micMode == "near") maxOf(700.0, noise * 3.5) else maxOf(250.0, noise * 2.0)
+
+    private fun audioMsg(b: ByteArray) = JSONObject().put("realtimeInput", JSONObject().put("audio",
+        JSONObject().put("data", Base64.encodeToString(b, Base64.NO_WRAP)).put("mimeType", "audio/pcm;rate=16000"))).toString()
+
     private fun onMic(buf: ShortArray, n: Int) {
         var sum = 0.0
         for (i in 0 until n) sum += buf[i] * buf[i].toDouble()
         val rms = sqrt(sum / n)
+        val thr = gateThreshold()
+        if (rms < thr && gateOpen == 0) noise = noise * 0.97 + minOf(rms, noise * 2.5) * 0.03
         val talking = speaking
-        if (!active || talking) spot(buf, n, rms)
-        if (active && !talking) {
-            val bytes = ByteBuffer.allocate(n * 2).order(ByteOrder.LITTLE_ENDIAN)
-            for (i in 0 until n) bytes.putShort(buf[i])
-            val msg = JSONObject().put("realtimeInput", JSONObject().put("audio",
-                JSONObject().put("data", Base64.encodeToString(bytes.array(), Base64.NO_WRAP)).put("mimeType", "audio/pcm;rate=16000"))).toString()
-            sendOrQueue(msg)
-            val now = System.currentTimeMillis()
-            if (now - lvlT > 90) { lvlT = now; ui("level", JSONObject().put("mic", (rms / 2500).coerceAtMost(1.0))) }
+        if (!active || talking) spot(buf, n, rms, thr)
+        if (!active || talking) { gateOpen = 0; prev = null; return }
+        val bytes = ByteBuffer.allocate(n * 2).order(ByteOrder.LITTLE_ENDIAN)
+        for (i in 0 until n) bytes.putShort(buf[i])
+        val cur = bytes.array()
+        if (rms >= thr) {
+            if (gateOpen == 0) prev?.let { sendOrQueue(audioMsg(it)) }
+            gateOpen = 6                                          // keep open 600 ms after the last loud frame
+            lastActivity = System.currentTimeMillis()
+        }
+        if (gateOpen > 0) { gateOpen--; sendOrQueue(audioMsg(cur)) }
+        else if (ready) ws?.send(audioMsg(if (cur.size == zeros.size) zeros else ByteArray(cur.size)))   // silence keeps the turn detector moving
+        prev = cur
+        val now = System.currentTimeMillis()
+        if (now - lvlT > 90) {
+            lvlT = now
+            val lv = if (gateOpen > 0) (rms / 2500).coerceAtMost(1.0) else 0.0
+            ui("level", JSONObject().put("mic", lv)); FloatingOrb.level = lv.toFloat()
         }
     }
 
@@ -201,10 +229,11 @@ object Nova {
         if (state == "standby") setState("standby", standbyText())
     }
 
-    private fun spot(buf: ShortArray, n: Int, rms: Double) {
+    private fun spot(buf: ShortArray, n: Int, rms: Double, thr: Double) {
         val r = wake ?: return
         if (!Prefs.wakeWord) return
-        quiet = if (rms > 220) 0 else quiet + 1
+        // in "near" mode only a close voice can wake Nova; quiet rooms cost almost no battery (nothing is decoded)
+        quiet = if (rms > (if (Prefs.micMode == "near") thr * 0.8 else 220.0)) 0 else quiet + 1
         if (quiet > 12) { if (quiet == 13) r.reset(); return }
         val text = try {
             if (r.acceptWaveForm(buf, n)) JSONObject(r.result).optString("text") else JSONObject(r.partialResult).optString("partial")
@@ -270,7 +299,9 @@ object Nova {
         if (active) { if (text != null) sendText(text); return }
         active = true
         reconnects = 0
+        thinkOff = true
         lastActivity = System.currentTimeMillis()
+        FloatingOrb.show(ctx)
         chime()
         ui("chime")
         if (text != null) pending.add(textMsg(text).also { ui("transcript", JSONObject().put("role", "user").put("text", text).put("final", true)) })
@@ -284,6 +315,7 @@ object Nova {
     }
 
     fun deactivate() {
+        FloatingOrb.hide()
         active = false
         ready = false
         sessionId++
@@ -336,6 +368,7 @@ Now: $now."""
         val setup = JSONObject()
             .put("model", "models/$model")
             .put("generationConfig", JSONObject().put("responseModalities", JSONArray().put("AUDIO"))
+                .apply { if (thinkOff) put("thinkingConfig", JSONObject().put("thinkingBudget", 0)) }
                 .put("speechConfig", JSONObject().put("voiceConfig", JSONObject().put("prebuiltVoiceConfig", JSONObject().put("voiceName", Prefs.voice)))))
             .put("systemInstruction", JSONObject().put("parts", JSONArray().put(JSONObject().put("text", systemPrompt()))))
             .put("tools", JSONArray().put(JSONObject().put("googleSearch", JSONObject())).put(JSONObject().put("functionDeclarations", Tools.declarations())))
@@ -343,8 +376,8 @@ Now: $now."""
             .put("outputAudioTranscription", JSONObject())
             .put("contextWindowCompression", JSONObject().put("slidingWindow", JSONObject()))
             .put("realtimeInputConfig", JSONObject().put("automaticActivityDetection", JSONObject()
-                .put("startOfSpeechSensitivity", "START_SENSITIVITY_LOW").put("endOfSpeechSensitivity", "END_SENSITIVITY_LOW")
-                .put("prefixPaddingMs", 300).put("silenceDurationMs", 900)))
+                .put("startOfSpeechSensitivity", "START_SENSITIVITY_HIGH").put("endOfSpeechSensitivity", "END_SENSITIVITY_HIGH")
+                .put("prefixPaddingMs", 200).put("silenceDurationMs", 600)))
         val sr = JSONObject()
         if (resumeHandle != null && System.currentTimeMillis() - resumeTime < 100 * 60_000) sr.put("handle", resumeHandle)
         setup.put("sessionResumption", sr)
@@ -381,7 +414,7 @@ Now: $now."""
                 active = false; setState("standby", standbyText()); return
             }
             resumeHandle = null
-            modelIdx++
+            if (thinkOff) thinkOff = false else { modelIdx++; thinkOff = true }
             if (modelIdx >= MODELS.size * 2 || reconnects > 6) {
                 ui("error", JSONObject().put("text", "Couldn't connect to Gemini: $reason"))
                 active = false; modelIdx = 0; setState("standby", standbyText()); return
@@ -468,8 +501,8 @@ Now: $now."""
         while (true) {
             Thread.sleep(1000)
             if (active) {
-                if (speaking) { lastActivity = System.currentTimeMillis(); ui("level", JSONObject().put("out", outLevel.toDouble())) }
-                else if (System.currentTimeMillis() - lastActivity > 75_000) main.post { deactivate() }
+                if (speaking) { lastActivity = System.currentTimeMillis(); ui("level", JSONObject().put("out", outLevel.toDouble())); FloatingOrb.level = outLevel }
+                else if (System.currentTimeMillis() - lastActivity > Prefs.activeSeconds * 1000L && state != "working" && state != "connecting") main.post { deactivate() }
             }
         }
     }

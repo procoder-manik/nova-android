@@ -5,7 +5,9 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.IntentFilter
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
@@ -27,9 +29,21 @@ class NovaService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = null
 
+    /** Battery saver: with "listen while screen is off" turned off, the microphone stops when the screen goes dark. */
+    private val screen = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            when (i.action) {
+                Intent.ACTION_SCREEN_OFF -> if (!Prefs.screenOffListen && !Nova.active) Nova.stopMic()
+                Intent.ACTION_SCREEN_ON -> Nova.startMic()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
+        val f = IntentFilter().apply { addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON) }
+        if (Build.VERSION.SDK_INT >= 33) registerReceiver(screen, f, Context.RECEIVER_NOT_EXPORTED) else registerReceiver(screen, f)
         getSystemService(NotificationManager::class.java).createNotificationChannel(
             NotificationChannel(CH, "Nova listening", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
     }
@@ -47,7 +61,11 @@ class NovaService : Service() {
         return START_STICKY
     }
 
-    override fun onDestroy() { instance = null; super.onDestroy() }
+    override fun onDestroy() {
+        instance = null
+        try { unregisterReceiver(screen) } catch (_: Exception) {}
+        super.onDestroy()
+    }
 
     fun build(): Notification {
         val flags = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT

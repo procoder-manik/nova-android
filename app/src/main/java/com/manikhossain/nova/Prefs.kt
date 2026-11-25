@@ -32,6 +32,28 @@ object Prefs {
         get() = sp.getString("model", "") ?: ""
         set(v) = sp.edit().putString("model", v).apply()
 
+    var activeSeconds: Int
+        get() = sp.getInt("active_seconds", 15)
+        set(v) = sp.edit().putInt("active_seconds", v.coerceIn(5, 120)).apply()
+    var micMode: String                       // "near" = only the voice close to the phone, "normal"
+        get() = sp.getString("mic_mode", "near") ?: "near"
+        set(v) = sp.edit().putString("mic_mode", v).apply()
+    var floatingOrb: Boolean
+        get() = sp.getBoolean("floating_orb", true)
+        set(v) = sp.edit().putBoolean("floating_orb", v).apply()
+    var orbOpacity: Int
+        get() = sp.getInt("orb_opacity", 85)
+        set(v) = sp.edit().putInt("orb_opacity", v.coerceIn(15, 100)).apply()
+    var orbX: Int
+        get() = sp.getInt("orb_x", -1)
+        set(v) = sp.edit().putInt("orb_x", v).apply()
+    var orbY: Int
+        get() = sp.getInt("orb_y", -1)
+        set(v) = sp.edit().putInt("orb_y", v).apply()
+    var screenOffListen: Boolean               // listen for "Nova" while the screen is off (uses a little more battery)
+        get() = sp.getBoolean("screen_off_listen", true)
+        set(v) = sp.edit().putBoolean("screen_off_listen", v).apply()
+
     // ---- long-term memory (facts the user taught Nova)
     fun memories(): JSONArray = JSONArray(sp.getString("memory", "[]"))
 

@@ -103,6 +103,9 @@ class MainActivity : Activity() {
                 .put("voice", Prefs.voice).put("female", JSONArray(Nova.FEMALE)).put("male", JSONArray(Nova.MALE))
                 .put("wake_word", Prefs.wakeWord).put("wake_status", Nova.wakeStatus)
                 .put("gmail", Prefs.gmailConnected)
+                .put("active_seconds", Prefs.activeSeconds).put("mic_mode", Prefs.micMode)
+                .put("floating_orb", Prefs.floatingOrb).put("orb_opacity", Prefs.orbOpacity)
+                .put("screen_off_listen", Prefs.screenOffListen)
                 .put("memories", Prefs.memories())
                 .put("history", Prefs.historyJson())
                 .put("perms", JSONObject()
@@ -122,6 +125,11 @@ class MainActivity : Activity() {
             if (s.has("user_name")) Prefs.userName = s.optString("user_name")
             if (s.optString("voice").isNotBlank()) Prefs.voice = s.optString("voice")
             if (s.has("wake_word") && s.optBoolean("wake_word") != Prefs.wakeWord) Nova.setWake(s.optBoolean("wake_word"))
+            if (s.has("active_seconds")) Prefs.activeSeconds = s.optInt("active_seconds", 15)
+            if (s.has("mic_mode")) Prefs.micMode = s.optString("mic_mode", "near")
+            if (s.has("floating_orb")) { Prefs.floatingOrb = s.optBoolean("floating_orb"); if (!Prefs.floatingOrb) FloatingOrb.hide() }
+            if (s.has("orb_opacity")) { Prefs.orbOpacity = s.optInt("orb_opacity", 85); FloatingOrb.setOpacity(Prefs.orbOpacity) }
+            if (s.has("screen_off_listen")) Prefs.screenOffListen = s.optBoolean("screen_off_listen")
             runOnUiThread { NovaService.start(this@MainActivity); emit("refresh", JSONObject()) }
         }
 

@@ -102,16 +102,31 @@ label{display:block;font-size:13px;color:var(--dim);margin:9px 0 5px}
   <div class="sec"><div class="sec-t">② VOICE</div>
     <div class="row"><button class="btn" id="g-f" onclick="fillVoices('f')">♀ Female</button><button class="btn" id="g-m" onclick="fillVoices('m')">♂ Male</button></div>
     <label>Voice</label><select id="s-voice"></select>
-    <label class="switch" style="margin-top:12px"><input type="checkbox" id="s-wake"> “Nova” বললেই চালু (স্ক্রিন বন্ধ থাকলেও) <span class="help" id="s-wakest"></span></label>
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="s-wake"> “Nova” বললেই চালু <span class="help" id="s-wakest"></span></label>
   </div>
-  <div class="sec"><div class="sec-t">③ GMAIL</div>
+  <div class="sec"><div class="sec-t">③ LISTENING</div>
+    <label>ডাকার পর কতক্ষণ শুনবে (চুপ থাকলে বন্ধ)</label>
+    <select id="s-active"><option value="10">10 সেকেন্ড</option><option value="15">15 সেকেন্ড</option><option value="20">20 সেকেন্ড</option><option value="30">30 সেকেন্ড</option><option value="60">1 মিনিট</option></select>
+    <div class="help">শেষ কথার পর এতক্ষণ কিছু না বললে Nova বন্ধ হয়ে যাবে। আবার “Nova” বললেই চালু।</div>
+    <label>মাইক্রোফোন</label>
+    <select id="s-micmode"><option value="near">শুধু কাছের কণ্ঠ (দূরের কথা/শব্দ নেবে না)</option><option value="normal">স্বাভাবিক (দূর থেকেও শুনবে)</option></select>
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="s-screenoff"> স্ক্রিন বন্ধ থাকলেও “Nova” শুনবে</label>
+    <div class="help">বন্ধ রাখলে ব্যাটারি আরও কম খরচ হবে — তখন স্ক্রিন অন করে “Nova” বলবেন।</div>
+  </div>
+  <div class="sec"><div class="sec-t">④ FLOATING ORB</div>
+    <label class="switch"><input type="checkbox" id="s-orb"> Nova চালু থাকলে স্ক্রিনে ভাসমান বৃত্ত দেখাবে</label>
+    <label>Opacity: <b id="s-opv"></b>%</label>
+    <input type="range" id="s-op" min="15" max="100" step="5" style="height:30px;padding:0" oninput="$('s-opv').textContent=this.value">
+    <div class="help">বৃত্তে ট্যাপ = থামানো, টেনে সরানো যায়। “Display over other apps” অনুমতি লাগবে।</div>
+  </div>
+  <div class="sec"><div class="sec-t">⑤ GMAIL</div>
     <div class="row"><button class="btn primary" onclick="A.connectGmail()">Connect Gmail</button><span id="s-gmail" class="ok"></span></div>
     <div class="help">শুধু পড়ার অনুমতি (read-only)। প্রথমবারের আগে Google Cloud-এ একবার সেটআপ লাগবে — README দেখুন। সেটআপ না থাকলেও Nova Gmail-এর নোটিফিকেশন পড়ে বলতে পারবে।</div>
   </div>
-  <div class="sec"><div class="sec-t">④ PERMISSIONS</div><div id="perms"></div>
+  <div class="sec"><div class="sec-t">⑥ PERMISSIONS</div><div id="perms"></div>
     <div class="help">“Display over other apps” দিলে ফোন লক/ব্যাকগ্রাউন্ডে থাকলেও Nova অ্যাপ খুলতে পারবে। “Battery” দিলে Android Nova-কে বন্ধ করবে না।</div>
   </div>
-  <div class="sec"><div class="sec-t">⑤ MEMORY</div><div id="mem"></div></div>
+  <div class="sec"><div class="sec-t">⑦ MEMORY</div><div id="mem"></div></div>
   <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" onclick="closeSheets()">Cancel</button><button class="btn primary" onclick="saveSettings()">Save</button></div>
 </div></div>
 
@@ -181,12 +196,16 @@ const PL={mic:['Microphone','কথা শোনার জন্য'],contacts:[
 function openSettings(first){ refresh(); $('s-name').value=st.user_name||''; $('s-keyok').textContent=st.has_key?'✔ key saved':(first?'← প্রথমে key দিন':'');
   $('s-wake').checked=!!st.wake_word; $('s-wakest').textContent={downloading:'(downloading…)',error:'(error)'}[st.wake_status]||'';
   $('s-gmail').textContent=st.gmail?'✔ connected':'';
+  $('s-active').value=String(st.active_seconds||15); if(!$('s-active').value){ $('s-active').add(new Option(st.active_seconds+' সেকেন্ড',st.active_seconds)); $('s-active').value=String(st.active_seconds) }
+  $('s-micmode').value=st.mic_mode||'near'; $('s-screenoff').checked=st.screen_off_listen!==false;
+  $('s-orb').checked=st.floating_orb!==false; $('s-op').value=st.orb_opacity||85; $('s-opv').textContent=st.orb_opacity||85;
   fillVoices((st.male||[]).includes(st.voice)?'m':'f');
   $('perms').innerHTML=Object.keys(PL).map(k=>`<div class="perm"><div>${PL[k][0]}<small>${PL[k][1]}</small></div>${st.perms&&st.perms[k]?'<span class="ok">✔</span>':`<button class="btn" onclick="A.grant('${k}')">Allow</button>`}</div>`).join('');
   const m=st.memories||[]; $('mem').innerHTML=m.length?m.slice().reverse().map(f=>`<div class="mem"><div>${esc(f.fact)}</div><button onclick='A.forget(${JSON.stringify(f.fact)});openSettings()'>✕</button></div>`).join(''):'<div class="help">এখনো কিছু মনে রাখেনি। বলুন: “Nova, মনে রেখো …”</div>';
   $('settings').classList.add('on') }
 function fillVoices(g){ $('g-f').classList.toggle('sel',g==='f'); $('g-m').classList.toggle('sel',g==='m'); const l=(g==='m'?st.male:st.female)||[]; $('s-voice').innerHTML=l.map(v=>`<option ${v===st.voice?'selected':''}>${v}</option>`).join('') }
-function saveSettings(){ A.save(JSON.stringify({api_key:$('s-key').value,user_name:$('s-name').value,voice:$('s-voice').value,wake_word:$('s-wake').checked})); $('s-key').value=''; closeSheets(); toast('Saved ✔',2000) }
+function saveSettings(){ A.save(JSON.stringify({api_key:$('s-key').value,user_name:$('s-name').value,voice:$('s-voice').value,wake_word:$('s-wake').checked,
+  active_seconds:+$('s-active').value,mic_mode:$('s-micmode').value,screen_off_listen:$('s-screenoff').checked,floating_orb:$('s-orb').checked,orb_opacity:+$('s-op').value})); $('s-key').value=''; closeSheets(); toast('Saved ✔',2000) }
 
 /* dates: English · বাংলা · বঙ্গাব্দ · হিজরি */
 const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
