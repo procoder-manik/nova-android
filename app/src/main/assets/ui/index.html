@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>NOVA</title>
+<style>
+:root{--bg:#02050b;--glass:rgba(10,24,44,.6);--line:rgba(80,220,255,.18);--line2:rgba(80,220,255,.45);--c:#22d8ff;--c2:#9af3ff;--vio:#8b6bff;--amber:#ffb547;--red:#ff4d6d;--green:#3dffa8;--text:#dcf7ff;--dim:#7d9db3;
+ --ui:'Segoe UI',Roboto,'Noto Sans Bengali','Hind Siliguri',system-ui,sans-serif}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--ui);overflow:hidden}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 30%,rgba(34,216,255,.12),transparent 55%),radial-gradient(ellipse at 50% 110%,rgba(139,107,255,.16),transparent 55%)}
+.app{position:relative;height:100%;display:flex;flex-direction:column;padding:10px 14px calc(10px + env(safe-area-inset-bottom))}
+header{display:flex;align-items:center;justify-content:space-between;height:46px}
+.brand{display:flex;align-items:center;gap:9px}.brand img{width:30px;height:30px}
+.brand h1{font-size:19px;letter-spacing:.34em;font-weight:800;color:var(--c2)}
+.brand small{display:block;font-size:8.5px;letter-spacing:.3em;color:var(--dim)}
+.ib{width:38px;height:38px;border-radius:12px;border:1px solid var(--line2);background:var(--glass);color:var(--c2);font-size:17px}
+.dates{text-align:center;margin-top:4px;font-size:12px;color:var(--dim);line-height:1.5}
+.dates b{color:var(--text);font-size:22px;font-weight:700;letter-spacing:.04em}
+.stage{position:relative;flex:0 0 auto;height:36vh;min-height:230px}
+#core{width:100%;height:100%}
+.status{text-align:center;margin-top:-6px}
+.status .s{font-size:12px;letter-spacing:.42em;color:var(--c);font-weight:700}
+.status .t{font-size:13px;color:var(--dim);margin-top:3px;min-height:18px}
+.log{flex:1;overflow-y:auto;margin:10px 0 8px;padding:4px 2px;user-select:text;-webkit-user-select:text}
+.msg{margin:0 0 10px;max-width:88%;animation:in .2s ease}
+@keyframes in{from{opacity:0;transform:translateY(4px)}}
+.msg .b{padding:9px 12px;border-radius:14px;font-size:15px;line-height:1.5;white-space:pre-wrap}
+.msg.user{margin-left:auto}.msg.user .b{background:rgba(34,216,255,.13);border:1px solid var(--line);border-bottom-right-radius:4px}
+.msg.nova .b{background:rgba(139,107,255,.12);border:1px solid rgba(139,107,255,.3);border-bottom-left-radius:4px}
+.msg.tool{max-width:100%;font-size:12px;color:var(--amber);letter-spacing:.04em;padding-left:4px}
+.hint{color:var(--dim);font-size:14px;line-height:1.75;text-align:center;padding:6px 10px}
+.hint b{color:var(--c2)}
+.src a{display:block;font-size:13px;color:var(--c2);padding:6px 10px;border:1px solid var(--line);border-radius:10px;margin:4px 0;text-decoration:none}
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;padding:8px 12px;border-radius:999px;border:1px solid var(--line2);background:var(--glass);color:var(--text);font-size:13px}
+.bar{display:flex;gap:9px;align-items:center}
+.bar input{flex:1;min-width:0;height:48px;border-radius:24px;border:1px solid var(--line2);background:var(--glass);color:var(--text);padding:0 18px;font-size:16px;outline:none;font-family:var(--ui)}
+.mic{flex:0 0 auto;width:56px;height:56px;border-radius:50%;border:2px solid var(--c);background:radial-gradient(circle,rgba(34,216,255,.3),rgba(2,5,11,.6));color:#fff;font-size:22px}
+body.live .mic{border-color:var(--green);box-shadow:0 0 0 6px rgba(61,255,168,.1),0 0 26px rgba(61,255,168,.4)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;z-index:9}
+.sheet.on{display:flex}
+.card{width:100%;max-height:88vh;overflow-y:auto;background:#06101d;border-top:1px solid var(--line2);border-radius:22px 22px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom))}
+.card h2{font-size:17px;letter-spacing:.25em;color:var(--c2);display:flex;justify-content:space-between;align-items:center}
+.sec{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+.sec-t{font-size:11px;letter-spacing:.28em;color:var(--c);font-weight:700;margin-bottom:9px}
+label{display:block;font-size:13px;color:var(--dim);margin:9px 0 5px}
+.card input,.card select{width:100%;height:46px;border-radius:12px;border:1px solid var(--line2);background:#0a1a2c;color:var(--text);padding:0 12px;font-size:15px;outline:none}
+.help{font-size:13px;color:var(--dim);line-height:1.6;margin-top:6px}.help a{color:var(--c2)}
+.btn{height:42px;padding:0 16px;border-radius:12px;border:1px solid var(--line2);background:var(--glass);color:var(--text);font-size:14px;font-weight:600}
+.btn.primary{background:var(--c);color:#02131d;border-color:var(--c)}
+.btn.sel{background:rgba(34,216,255,.22);border-color:var(--c)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.perm{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed rgba(80,220,255,.12);font-size:14px}
+.perm small{display:block;color:var(--dim);font-size:12px}
+.ok{color:var(--green);font-weight:700}
+.switch{display:flex;align-items:center;gap:10px;font-size:15px}.switch input{width:22px!important;height:22px!important}
+.mem{display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px dashed rgba(80,220,255,.12);font-size:14px}
+.mem button{background:none;border:none;color:var(--dim);font-size:16px}
+.pay{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.paycard{display:flex;align-items:center;gap:9px;padding:10px;border-radius:12px;border:1px solid var(--b);background:color-mix(in srgb,var(--b) 18%,#06101d);color:#fff;text-align:left}
+.paycard i{font-style:normal;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;background:var(--b);font-weight:800}
+.paycard b{display:block;font-size:14px}.paycard small{font-size:11px;color:#ddd}
+.toast{position:fixed;left:14px;right:14px;top:62px;padding:11px 14px;border-radius:12px;border:1px solid var(--c);background:rgba(4,20,36,.96);font-size:14px;display:none;z-index:20}
+.credit{text-align:center;font-size:11px;color:var(--dim);margin-top:8px}.credit a{color:var(--c2);font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand"><img src="nova.png" alt=""><div><h1>NOVA</h1><small>PERSONAL INTELLIGENCE</small></div></div>
+    <div class="row"><button class="ib" onclick="openAbout()">ⓘ</button><button class="ib" onclick="openSettings()">⚙</button></div>
+  </header>
+  <div class="dates"><b id="clk">--:--</b><br><span id="d1"></span><br><span id="d2"></span></div>
+  <div class="stage"><canvas id="core"></canvas></div>
+  <div class="status"><div class="s" id="st-s">STANDBY</div><div class="t" id="st-t"></div></div>
+  <div class="log" id="log"><div class="hint" id="welcome">ডাকুন <b>“Nova”</b> — বা মাঝের বৃত্তে ট্যাপ করুন।<br>থামাতে বলুন <b>“Stop”</b>।<br>“WhatsApp-এ নতুন কী এসেছে?” · “আমার ইমেইল দেখো” · “সকাল ৭টায় অ্যালার্ম দাও”</div></div>
+  <div class="chips">
+    <button class="chip" onclick="say('আজকের বাংলাদেশের প্রধান খবরগুলো সংক্ষেপে বলো, সোর্সসহ')">📰 খবর</button>
+    <button class="chip" onclick="say('আমার Gmail-এ নতুন কী ইমেইল এসেছে দেখো')">✉ ইমেইল</button>
+    <button class="chip" onclick="say('WhatsApp আর মেসেজে নতুন কী এসেছে দেখো')">☏ মেসেজ</button>
+    <button class="chip" onclick="say('Open YouTube')">▶ YouTube</button>
+    <button class="chip" onclick="say('Turn on the flashlight')">🔦 টর্চ</button>
+    <button class="chip" onclick="say('ফোনের ব্যাটারি কত আছে?')">🔋 ব্যাটারি</button>
+  </div>
+  <div class="bar">
+    <input id="text" placeholder="Nova-কে লিখুন…" enterkeyhint="send" autocomplete="off">
+    <button class="mic" id="mic" onclick="A.toggle()">◉</button>
+  </div>
+  <div class="credit">Developed by <a onclick="A.openUrl(CREDITS.site)">Manik Hossain</a></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<div class="sheet" id="settings"><div class="card">
+  <h2>SETTINGS <button class="ib" onclick="closeSheets()">✕</button></h2>
+  <div class="sec"><div class="sec-t">① GEMINI KEY (FREE)</div>
+    <input id="s-key" type="password" placeholder="Paste API key (empty = keep current)">
+    <div class="help">ফ্রি key: <a onclick="A.openUrl('https://aistudio.google.com/apikey')">aistudio.google.com/apikey</a> → Create API key → কপি করে এখানে পেস্ট। <span id="s-keyok" class="ok"></span></div>
+    <label>আপনার নাম</label><input id="s-name" placeholder="Manik">
+  </div>
+  <div class="sec"><div class="sec-t">② VOICE</div>
+    <div class="row"><button class="btn" id="g-f" onclick="fillVoices('f')">♀ Female</button><button class="btn" id="g-m" onclick="fillVoices('m')">♂ Male</button></div>
+    <label>Voice</label><select id="s-voice"></select>
+    <label class="switch" style="margin-top:12px"><input type="checkbox" id="s-wake"> “Nova” বললেই চালু (স্ক্রিন বন্ধ থাকলেও) <span class="help" id="s-wakest"></span></label>
+  </div>
+  <div class="sec"><div class="sec-t">③ GMAIL</div>
+    <div class="row"><button class="btn primary" onclick="A.connectGmail()">Connect Gmail</button><span id="s-gmail" class="ok"></span></div>
+    <div class="help">শুধু পড়ার অনুমতি (read-only)। প্রথমবারের আগে Google Cloud-এ একবার সেটআপ লাগবে — README দেখুন। সেটআপ না থাকলেও Nova Gmail-এর নোটিফিকেশন পড়ে বলতে পারবে।</div>
+  </div>
+  <div class="sec"><div class="sec-t">④ PERMISSIONS</div><div id="perms"></div>
+    <div class="help">“Display over other apps” দিলে ফোন লক/ব্যাকগ্রাউন্ডে থাকলেও Nova অ্যাপ খুলতে পারবে। “Battery” দিলে Android Nova-কে বন্ধ করবে না।</div>
+  </div>
+  <div class="sec"><div class="sec-t">⑤ MEMORY</div><div id="mem"></div></div>
+  <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" onclick="closeSheets()">Cancel</button><button class="btn primary" onclick="saveSettings()">Save</button></div>
+</div></div>
+
+<div class="sheet" id="about"><div class="card">
+  <h2>NOVA <button class="ib" onclick="closeSheets()">✕</button></h2>
+  <div class="help">Personal voice assistant · free &amp; open source</div>
+  <div class="sec"><div class="sec-t">DEVELOPER</div>
+    <div class="perm">Built by <a style="color:var(--c2);font-weight:700" onclick="A.openUrl(CREDITS.site)">Manik Hossain ↗</a></div>
+    <div class="perm">Website <a style="color:var(--c2)" onclick="A.openUrl(CREDITS.site)">manikhossain.in</a></div>
+  </div>
+  <div class="sec"><div class="sec-t">FOUND A PROBLEM? · সমস্যা পেলে জানান</div>
+    <button class="btn" onclick="A.openUrl('https://wa.me/'+CREDITS.wa+'?text='+encodeURIComponent('Hi Manik, I found an issue in Nova (Android): '))">☏ Report on WhatsApp</button>
+  </div>
+  <div class="sec"><div class="sec-t">☕ BUY THE DEVELOPER A COFFEE</div>
+    <div class="help">Send Money (Personal):</div>
+    <div class="pay">
+      <button class="paycard" style="--b:#E2136E" onclick="copyNum('bKash')"><i>৳</i><span><b>bKash</b><small>Tap to copy</small></span></button>
+      <button class="paycard" style="--b:#F26522" onclick="copyNum('Nagad')"><i>৳</i><span><b>Nagad</b><small>Tap to copy</small></span></button>
+      <button class="paycard" style="--b:#8C3494" onclick="copyNum('Rocket')"><i>৳</i><span><b>Rocket</b><small>Tap to copy</small></span></button>
+      <button class="paycard" style="--b:#25D366" onclick="A.openUrl('https://wa.me/'+CREDITS.wa)"><i>☏</i><span><b>WhatsApp</b><small>Message</small></span></button>
+    </div>
+    <div class="help">Number: <b id="payNum"></b></div>
+  </div>
+</div></div>
+
+<script>
+const CREDITS={name:'Manik Hossain',site:'https://manikhossain.in/',phone:'+880150043801',wa:'880150043801'};
+const A=window.Android||{toggle(){},send(){},getState(){return '{}'},save(){},grant(){},connectGmail(){},forget(){},openUrl(){},copy(){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let S={state:'standby',mic:0,out:0,flash:0},st={},cur={user:null,nova:null};
+function say(t){ A.send(t) }
+$('text').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()){ A.send(e.target.value.trim()); e.target.value=''; e.target.blur() } });
+$('core').onclick=()=>A.toggle();
+function toast(t,ms){ const el=$('toast'); el.textContent=t; el.style.display='block'; clearTimeout(el._t); el._t=setTimeout(()=>el.style.display='none',ms||3500) }
+function copyNum(w){ A.copy(CREDITS.phone); toast(w+' number copied: '+CREDITS.phone) }
+function openAbout(){ $('payNum').textContent=CREDITS.phone; $('about').classList.add('on') }
+function closeSheets(){ document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('on')) }
+const NAMES={standby:'STANDBY',listening:'LISTENING',thinking:'THINKING',speaking:'SPEAKING',working:'WORKING',connecting:'CONNECTING'};
+function setState(s,t){ S.state=s; $('st-s').textContent=NAMES[s]||s.toUpperCase(); if(t!==undefined) $('st-t').textContent=t||''; document.body.classList.toggle('live',s!=='standby') }
+
+window.nova={ on(ev,d){ d=d||{};
+  if(ev==='state') setState(d.state,d.text);
+  else if(ev==='level'){ if(d.mic!==undefined) S.mic=Math.min(1,d.mic); if(d.out!==undefined) S.out=Math.min(1,d.out) }
+  else if(ev==='transcript') addMsg(d.role,d.text,d.final);
+  else if(ev==='tool'){ const m=document.createElement('div'); m.className='msg tool'; m.textContent='⚙ '+d.name.replace(/_/g,' ')+' '+Object.values(d.args||{}).filter(v=>typeof v!=='object').join(' · ').slice(0,70); $('log').appendChild(m); scroll() }
+  else if(ev==='sources'){ const m=document.createElement('div'); m.className='src'; m.innerHTML=d.items.slice(0,4).map(s=>`<a onclick='A.openUrl(${JSON.stringify(s.uri)})'>↗ ${esc(s.title||s.uri)}</a>`).join(''); $('log').appendChild(m); scroll() }
+  else if(ev==='error') toast(d.text,8000);
+  else if(ev==='info') toast(d.text,4500);
+  else if(ev==='memory') toast('🧠 মনে রাখলাম: '+d.fact);
+  else if(ev==='need_key') openSettings(true);
+  else if(ev==='need_mic'){ toast('মাইক্রোফোনের অনুমতি দিন'); A.grant('mic') }
+  else if(ev==='chime') S.flash=1;
+  else if(ev==='refresh') refresh();
+}};
+function scroll(){ const l=$('log'); l.scrollTop=l.scrollHeight }
+function addMsg(role,text,final){ $('welcome')&&$('welcome').remove(); role=role==='user'?'user':'nova';
+  if(!cur[role]){ cur[role]=document.createElement('div'); cur[role].className='msg '+role; cur[role].innerHTML='<div class="b"></div>'; $('log').appendChild(cur[role]) }
+  cur[role].querySelector('.b').textContent=text; if(final) cur[role]=null; scroll() }
+function refresh(){ try{ st=JSON.parse(A.getState()) }catch(e){ st={} } if(st.state) setState(st.state,st.text);
+  if(st.has_key===false) setTimeout(()=>openSettings(true),400) }
+refresh();
+setTimeout(()=>{ if(!$('welcome')) return; const h=(st.history||[]).slice(-6); if(h.length){ $('welcome').remove(); h.forEach(x=>{ if(x.r==='tool') return; addMsg(x.r,x.x,true) }) } },300);
+
+/* settings */
+const PL={mic:['Microphone','কথা শোনার জন্য'],contacts:['Contacts','নাম ধরে কল/মেসেজ'],calls:['Phone calls','সরাসরি কল করতে'],notifications:['Notification access','WhatsApp/Gmail/SMS পড়তে'],overlay:['Display over other apps','ব্যাকগ্রাউন্ড থেকে অ্যাপ খুলতে'],battery:['Battery (unrestricted)','সবসময় “Nova” শুনতে']};
+function openSettings(first){ refresh(); $('s-name').value=st.user_name||''; $('s-keyok').textContent=st.has_key?'✔ key saved':(first?'← প্রথমে key দিন':'');
+  $('s-wake').checked=!!st.wake_word; $('s-wakest').textContent={downloading:'(downloading…)',error:'(error)'}[st.wake_status]||'';
+  $('s-gmail').textContent=st.gmail?'✔ connected':'';
+  fillVoices((st.male||[]).includes(st.voice)?'m':'f');
+  $('perms').innerHTML=Object.keys(PL).map(k=>`<div class="perm"><div>${PL[k][0]}<small>${PL[k][1]}</small></div>${st.perms&&st.perms[k]?'<span class="ok">✔</span>':`<button class="btn" onclick="A.grant('${k}')">Allow</button>`}</div>`).join('');
+  const m=st.memories||[]; $('mem').innerHTML=m.length?m.slice().reverse().map(f=>`<div class="mem"><div>${esc(f.fact)}</div><button onclick='A.forget(${JSON.stringify(f.fact)});openSettings()'>✕</button></div>`).join(''):'<div class="help">এখনো কিছু মনে রাখেনি। বলুন: “Nova, মনে রেখো …”</div>';
+  $('settings').classList.add('on') }
+function fillVoices(g){ $('g-f').classList.toggle('sel',g==='f'); $('g-m').classList.toggle('sel',g==='m'); const l=(g==='m'?st.male:st.female)||[]; $('s-voice').innerHTML=l.map(v=>`<option ${v===st.voice?'selected':''}>${v}</option>`).join('') }
+function saveSettings(){ A.save(JSON.stringify({api_key:$('s-key').value,user_name:$('s-name').value,voice:$('s-voice').value,wake_word:$('s-wake').checked})); $('s-key').value=''; closeSheets(); toast('Saved ✔',2000) }
+
+/* dates: English · বাংলা · বঙ্গাব্দ · হিজরি */
+const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const bnMonths=['বৈশাখ','জ্যৈষ্ঠ','আষাঢ়','শ্রাবণ','ভাদ্র','আশ্বিন','কার্তিক','অগ্রহায়ণ','পৌষ','মাঘ','ফাল্গুন','চৈত্র'];
+function bangabda(d){ const y=d.getFullYear(); const start=new Date(d>=new Date(y,3,14)?y:y-1,3,14); let day=Math.round((new Date(y,d.getMonth(),d.getDate())-start)/864e5);
+  const gy=start.getFullYear()+1, leap=(gy%4===0&&gy%100!==0)||gy%400===0; const len=[31,31,31,31,31,31,30,30,30,30,leap?30:29,30]; let m=0; while(m<11&&day>=len[m]){ day-=len[m]; m++ } return {d:day+1,m,y:start.getFullYear()-593} }
+const hm=['মহররম','সফর','রবিউল আউয়াল','রবিউস সানি','জমাদিউল আউয়াল','জমাদিউস সানি','রজব','শাবান','রমজান','শাওয়াল','জিলকদ','জিলহজ'];
+function hijri(d){ try{ const p=Object.fromEntries(new Intl.DateTimeFormat('en-u-ca-islamic-umalqura',{day:'numeric',month:'numeric',year:'numeric'}).formatToParts(new Date(d-864e5)).map(q=>[q.type,q.value])); return `${bn(p.day)} ${hm[+p.month-1]} ${bn(parseInt(p.year))} হিজরি` }catch(e){ return '' } }
+function tick(){ const d=new Date(); let h=d.getHours(),ap=h>=12?'PM':'AM'; h=h%12||12; $('clk').textContent=`${h}:${String(d.getMinutes()).padStart(2,'0')} ${ap}`;
+  $('d1').textContent=d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const b=bangabda(d); $('d2').textContent=`${bn(b.d)} ${bnMonths[b.m]} ${bn(b.y)} বঙ্গাব্দ · ${hijri(d)}` }
+setInterval(tick,15000); tick();
+
+/* the orb */
+const cv=$('core'),cx=cv.getContext('2d'); let W,H,amp=0,lastF=0; const DPR=Math.min(devicePixelRatio||1,2), t0=performance.now();
+function size(){ const r=cv.getBoundingClientRect(); cv.width=r.width*DPR; cv.height=r.height*DPR; W=cv.width; H=cv.height } addEventListener('resize',size); size();
+const COL={standby:[34,216,255],listening:[61,255,168],thinking:[255,181,71],working:[255,181,71],speaking:[154,243,255],connecting:[139,107,255]};
+let cc=[34,216,255];
+function frame(now){ requestAnimationFrame(frame); const idle=S.state==='standby'; if(document.hidden||now-lastF<1000/(idle?20:40)) return; lastF=now;
+  const t=(now-t0)/1000,tg=COL[S.state]||COL.standby; for(let i=0;i<3;i++) cc[i]+=(tg[i]-cc[i])*.12; const rgb=`${cc[0]|0},${cc[1]|0},${cc[2]|0}`, R=Math.min(W,H)*.46, d=DPR;
+  const target=S.state==='speaking'?.35+S.out*1.5:S.state==='listening'?.14+S.mic*1.4:(S.state==='thinking'||S.state==='working')?.3+.15*Math.sin(t*6):.07+.03*Math.sin(t*1.5);
+  amp+=(Math.min(target,1.3)-amp)*.16; S.mic*=.88; S.out*=.9; S.flash*=.93;
+  cx.clearRect(0,0,W,H); cx.save(); cx.translate(W/2,H/2);
+  const g=cx.createRadialGradient(0,0,0,0,0,R); g.addColorStop(0,`rgba(${rgb},${.4+amp*.3+S.flash*.4})`); g.addColorStop(.4,`rgba(${rgb},.08)`); g.addColorStop(1,'rgba(0,0,0,0)'); cx.fillStyle=g; cx.beginPath(); cx.arc(0,0,R,0,7); cx.fill();
+  for(let i=0;i<90;i++){ const a=i/90*Math.PI*2, v=(Math.sin(i*1.7+t*8)*.5+.5)*(Math.sin(i*.31-t*3)*.5+.5), r1=R*.68, r2=r1+R*(.02+v*amp*.2);
+    cx.strokeStyle=`rgba(${rgb},${.25+v*.6})`; cx.lineWidth=2*d; cx.beginPath(); cx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1); cx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2); cx.stroke() }
+  [[.95,48,.25,1.4,.45],[.86,6,-.4,3,.75]].forEach(([rr,n,sp,w,al],k)=>{ cx.save(); cx.rotate(t*sp*(idle?.6:1.6)); cx.strokeStyle=k?`rgba(139,107,255,${al})`:`rgba(${rgb},${al})`; cx.lineWidth=w*d;
+    for(let i=0;i<n;i++){ const a=i/n*Math.PI*2; cx.beginPath(); cx.arc(0,0,R*rr,a,a+Math.PI*2/n*(k?.7:.55)); cx.stroke() } cx.restore() });
+  for(let L=0;L<3;L++){ cx.beginPath(); for(let i=0;i<=160;i++){ const a=i/160*Math.PI*2, n=Math.sin(a*(5+L*2)+t*(3+L)*(L%2?-1:1))*.6+Math.sin(a*3-t*2)*.4;
+    const r=R*(.5-L*.1+(.012+amp*.07)*n); const x=Math.cos(a)*r,y=Math.sin(a)*r; i?cx.lineTo(x,y):cx.moveTo(x,y) }
+    cx.strokeStyle=L===1?`rgba(139,107,255,.7)`:`rgba(${rgb},${.85-L*.2})`; cx.lineWidth=(L?1.4:2.4)*d; cx.stroke() }
+  const cg=cx.createRadialGradient(0,0,0,0,0,R*.22); cg.addColorStop(0,'rgba(255,255,255,.97)'); cg.addColorStop(.4,`rgba(${rgb},.9)`); cg.addColorStop(1,`rgba(${rgb},0)`);
+  cx.fillStyle=cg; cx.beginPath(); cx.arc(0,0,R*(.17+amp*.05+S.flash*.05),0,7); cx.fill(); cx.restore() }
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
