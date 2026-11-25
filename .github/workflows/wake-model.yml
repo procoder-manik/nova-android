@@ -16,16 +16,22 @@ jobs:
           curl -sSL -o full.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
           unzip -q full.zip && mv vosk-model-small-en-us-0.15 vosk-model
           du -ah vosk-model | sort -h | tail -15
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - name: Test audio
         run: |
           sudo apt-get -qq update && sudo apt-get -qq install -y espeak-ng sox > /dev/null
           espeak-ng -v en-us -s 140 -w a.wav "nova" && sox a.wav -r 16000 -c 1 -b 16 nova1.wav
           espeak-ng -v en-us -s 150 -w b.wav "hey nova" && sox b.wav -r 16000 -c 1 -b 16 nova2.wav
           espeak-ng -v en-us -s 150 -w c.wav "the weather is nice today" && sox c.wav -r 16000 -c 1 -b 16 other.wav
-          pip install -q vosk
+          pip install -q vosk pynini
       - name: Slim it (Nova only needs a tiny grammar, not the full English dictionary graph)
         run: |
           cp -r vosk-model full-model
+          # keep only the word list from the 23 MB English language graph (the app uses its own tiny grammar)
+          python3 -c "import pynini; pynini.Fst.read('vosk-model/graph/Gr.fst').output_symbols().write_text('vosk-model/graph/words.txt')"
+          wc -l vosk-model/graph/words.txt
           rm -f vosk-model/graph/Gr.fst
           rm -rf vosk-model/rescore vosk-model/rnnlm
           python3 tools/test_wake.py vosk-model || { echo "slim model failed - shipping the full one"; rm -rf vosk-model; mv full-model vosk-model; python3 tools/test_wake.py vosk-model; }
