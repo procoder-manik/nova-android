@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Nova</string>
+    <string name="access_desc">Lets Nova read what is on the screen and tap or type for you when you ask by voice (open Calendar and read your meetings, write a note, read your Gmail inbox). Nova never enters passwords or payment details.</string>
 </resources>

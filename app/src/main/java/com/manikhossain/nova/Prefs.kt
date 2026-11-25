@@ -54,6 +54,10 @@ object Prefs {
         get() = sp.getBoolean("screen_off_listen", true)
         set(v) = sp.edit().putBoolean("screen_off_listen", v).apply()
 
+    var notionToken: String
+        get() = sp.getString("notion_token", "") ?: ""
+        set(v) = sp.edit().putString("notion_token", v.trim()).apply()
+
     // ---- long-term memory (facts the user taught Nova)
     fun memories(): JSONArray = JSONArray(sp.getString("memory", "[]"))
 

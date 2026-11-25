@@ -1,0 +1,40 @@
+name: Slim wake-word model
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/wake-model.yml', 'tools/test_wake.py']
+permissions:
+  contents: write
+jobs:
+  model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the small English model
+        run: |
+          curl -sSL -o full.zip https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip
+          unzip -q full.zip && mv vosk-model-small-en-us-0.15 vosk-model
+          du -ah vosk-model | sort -h | tail -15
+      - name: Test audio
+        run: |
+          sudo apt-get -qq update && sudo apt-get -qq install -y espeak-ng sox > /dev/null
+          espeak-ng -v en-us -s 140 -w a.wav "nova" && sox a.wav -r 16000 -c 1 -b 16 nova1.wav
+          espeak-ng -v en-us -s 150 -w b.wav "hey nova" && sox b.wav -r 16000 -c 1 -b 16 nova2.wav
+          espeak-ng -v en-us -s 150 -w c.wav "the weather is nice today" && sox c.wav -r 16000 -c 1 -b 16 other.wav
+          pip install -q vosk
+      - name: Slim it (Nova only needs a tiny grammar, not the full English dictionary graph)
+        run: |
+          cp -r vosk-model full-model
+          rm -f vosk-model/graph/Gr.fst
+          rm -rf vosk-model/rescore vosk-model/rnnlm
+          python3 tools/test_wake.py vosk-model || { echo "slim model failed - shipping the full one"; rm -rf vosk-model; mv full-model vosk-model; python3 tools/test_wake.py vosk-model; }
+          du -sh vosk-model full-model 2>/dev/null || du -sh vosk-model
+          zip -qr -9 nova-wake-model.zip vosk-model && ls -l nova-wake-model.zip full.zip
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: wake-model
+          name: Nova wake-word model (slim)
+          body: Offline "Nova" wake-word model downloaded once by the app.
+          files: nova-wake-model.zip
+          make_latest: false

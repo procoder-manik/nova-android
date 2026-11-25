@@ -188,10 +188,11 @@ object Nova {
         if (vosk != null) { makeRecognizer(); return }
         val dir = File(ctx.filesDir, "vosk-model")
         try {
+            if (File(dir, "graph/Gr.fst").exists()) dir.deleteRecursively()      // old full model (68 MB) -> replace with the slim one
             if (!File(dir, "am").exists()) {
                 wakeStatus = "downloading"
-                ui("info", JSONObject().put("text", "Downloading the offline “Nova” wake-word model (40 MB, one time)…"))
-                URL("https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip").openStream().use { input ->
+                ui("info", JSONObject().put("text", "Downloading the offline “Nova” wake-word model (one time)…"))
+                URL("https://github.com/procoder-manik/nova-android/releases/download/wake-model/nova-wake-model.zip").openStream().use { input ->
                     ZipInputStream(input).use { z ->
                         var e = z.nextEntry
                         while (e != null) {
@@ -352,6 +353,8 @@ PERSONALITY: natural, friendly, caring, a little playful when it fits; never rob
 LISTENING: The user speaks Bangla (Dhaka accent), English or a mix. If a name or number is unclear, confirm briefly instead of guessing.
 LANGUAGE: Reply in the user's language (natural Bangladeshi Bangla, or English). Keep spoken answers short (1-3 sentences) and offer more.
 ACTIONS: Use your tools to act on the phone right away (open apps, websites, YouTube, calls, WhatsApp/SMS drafts, alarms, timers, flashlight, music, maps). Never claim something worked unless the tool says so.
+INSIDE APPS (you can see and use the phone like a person): open_app → read_screen to see what's inside → tap / type_text / scroll → read_screen again to check. Use this for anything an app shows (Calendar app, Gmail app, Samsung Notes / Keep, Messenger, settings...). For notes: open the notes app, tap the new-note button, type_text the note; or use notion_create_page / notion_append for Notion. When asked to summarise, write a clean summary yourself first. Before pressing Send / Post / Delete / Pay in any app, read back what will happen and wait for a clear yes. Never type passwords, OTPs or payment details.
+CALENDAR: use calendar_events to answer "do I have a meeting?" (it reads the phone's calendars directly) and add_calendar_event to schedule.
 CALLS & MESSAGES: If several contacts match, ask which one. WhatsApp/SMS tools only type the message - tell the user to press send.
 NOTIFICATIONS & EMAIL: Use read_notifications for new WhatsApp/Messenger/SMS messages and missed calls; use check_email for Gmail. Summarise briefly; don't read private details aloud unless asked.
 KNOWLEDGE: For news and anything current use Google Search and mention the source (Prothom Alo, The Daily Star, bdnews24, BBC...).
@@ -483,7 +486,11 @@ Now: $now."""
             val args = c.optJSONObject("args") ?: JSONObject()
             ui("tool", JSONObject().put("name", name).put("args", args))
             setState("working", name.replace('_', ' '))
-            val result = if (name == "end_conversation") { end = true; JSONObject().put("result", "ok") } else tools.run(name, args)
+            val result = when (name) {
+                "end_conversation" -> { end = true; JSONObject().put("result", "ok") }
+                "look_at_screen" -> lookAtScreen()
+                else -> tools.run(name, args)
+            }
             Prefs.addHistory("tool", "$name(${args.toString().take(120)}) -> ${result.optString("status", "ok")}")
             responses.put(JSONObject().put("id", c.optString("id")).put("name", name).put("response", result))
             lastActivity = System.currentTimeMillis()
@@ -495,6 +502,15 @@ Now: $now."""
             while (speaking && k++ < 60) Thread.sleep(250)
             main.post { deactivate() }
         }
+    }
+
+    /** Sends a screenshot to Gemini so Nova can actually see the screen. */
+    private fun lookAtScreen(): JSONObject {
+        val jpg = NovaAccess.screenshotJpeg()
+            ?: return NovaAccess.readScreen().put("note", "Screenshot not available; here is the screen text instead.")
+        ws?.send(JSONObject().put("realtimeInput", JSONObject().put("video",
+            JSONObject().put("data", Base64.encodeToString(jpg, Base64.NO_WRAP)).put("mimeType", "image/jpeg"))).toString())
+        return JSONObject().put("status", "screenshot_sent").put("note", "The screenshot was just sent to you as an image; describe what you see.")
     }
 
     private fun watchdog() {

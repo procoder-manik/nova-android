@@ -50,6 +50,18 @@ class Tools(private val ctx: Context) {
             decl("sms_message", "Open the SMS app with the message typed in, ready for the user to press send.", mapOf("name_or_number" to s("contact or number"), "message" to s("message text")), listOf("name_or_number", "message")),
             decl("read_notifications", "Read the phone's recent notifications (new WhatsApp/Messenger/Gmail/SMS messages, missed calls...). Optionally filter by app.", mapOf("app" to s("optional app name, e.g. WhatsApp, Gmail"))),
             decl("check_email", "Read the user's Gmail inbox (sender, subject, snippet). Default: unread mail.", mapOf("query" to s("Gmail search, e.g. is:unread, from:bank, newer_than:2d"))),
+            decl("calendar_events", "Read the user's calendar (meetings, events) from the phone. Default: today and tomorrow.", mapOf("days_ahead" to p("INTEGER", "how many days ahead, default 1"), "days_back" to p("INTEGER", "days in the past, default 0"), "query" to s("optional word to filter"))),
+            decl("add_calendar_event", "Add an event/meeting to the user's calendar.", mapOf("title" to s("title"), "start" to s("start time as YYYY-MM-DD HH:mm (24h)"), "minutes" to p("INTEGER", "length in minutes, default 60"), "location" to s("optional"), "notes" to s("optional")), listOf("title", "start")),
+            decl("read_screen", "Read the text currently on the phone screen (any app). Use after open_app to see what's inside an app (Calendar, Gmail, WhatsApp, Notes, Messenger...)."),
+            decl("look_at_screen", "Take a screenshot and look at it (for pictures, layouts, or when read_screen isn't enough)."),
+            decl("tap", "Tap a button/item on screen by its text or label (as seen in read_screen).", mapOf("target" to s("text or label of the thing to tap")), listOf("target")),
+            decl("type_text", "Type text into a text box on screen (note, message, search box...).", mapOf("text" to s("text to type"), "field" to s("optional: label/hint of the box"), "append" to p("BOOLEAN", "add after existing text"), "press_enter" to p("BOOLEAN", "press enter/search after typing")), listOf("text")),
+            decl("scroll", "Scroll the screen.", mapOf("direction" to s("down or up")), listOf("direction")),
+            decl("phone_button", "Press back / home / recents, or open the notification shade.", mapOf("button" to s("back, home, recents, notifications")), listOf("button")),
+            decl("notion_search", "Search the user's Notion pages.", mapOf("query" to s("words")), listOf("query")),
+            decl("notion_create_page", "Create a Notion page (notes, summaries) with Markdown content.", mapOf("title" to s("page title"), "content" to s("markdown: # heading, - bullets, plain lines"), "parent" to s("optional parent page name")), listOf("title", "content")),
+            decl("notion_append", "Add Markdown content to the end of an existing Notion page.", mapOf("page" to s("page name or id"), "content" to s("markdown")), listOf("page", "content")),
+            decl("notion_read", "Read a Notion page's text.", mapOf("page" to s("page name or id")), listOf("page")),
             decl("set_alarm", "Set an alarm.", mapOf("hour" to p("INTEGER", "0-23"), "minute" to p("INTEGER", "0-59"), "label" to s("optional label")), listOf("hour", "minute")),
             decl("set_timer", "Start a countdown timer.", mapOf("seconds" to p("INTEGER", "length in seconds"), "label" to s("optional label")), listOf("seconds")),
             decl("flashlight", "Turn the flashlight (torch) on or off.", mapOf("on" to p("BOOLEAN", "true = on")), listOf("on")),
@@ -63,7 +75,7 @@ class Tools(private val ctx: Context) {
 
     fun run(name: String, a: JSONObject): JSONObject = try {
         when (name) {
-            "open_app" -> openApp(a.optString("name"))
+            "open_app" -> openApp(a.optString("name")).also { if (it.optString("status") == "opened") Thread.sleep(1200) }
             "open_url" -> openUrl(a.optString("url"))
             "search_web" -> openUrl("https://www.google.com/search?q=" + enc(a.optString("query")))
             "youtube" -> openUrl("https://www.youtube.com/results?search_query=" + enc(a.optString("query")))
@@ -72,7 +84,18 @@ class Tools(private val ctx: Context) {
             "whatsapp_message" -> whatsapp(a.optString("name_or_number"), a.optString("message"))
             "sms_message" -> sms(a.optString("name_or_number"), a.optString("message"))
             "read_notifications" -> NotifListener.recent(a.optString("app"), ctx)
-            "check_email" -> Gmail.check(ctx, a.optString("query").ifBlank { "is:unread in:inbox" })
+            "check_email" -> checkEmail(a.optString("query").ifBlank { "is:unread in:inbox" })
+            "calendar_events" -> CalendarTool.events(ctx, a.optInt("days_ahead", 1), a.optInt("days_back", 0), a.optString("query"))
+            "add_calendar_event" -> CalendarTool.add(ctx, a.optString("title"), a.optString("start"), a.optInt("minutes", 60), a.optString("location"), a.optString("notes"))
+            "read_screen" -> NovaAccess.readScreen()
+            "tap" -> NovaAccess.tap(a.optString("target")).also { Thread.sleep(700) }
+            "type_text" -> NovaAccess.type(a.optString("text"), a.optString("field"), a.optBoolean("append"), a.optBoolean("press_enter"))
+            "scroll" -> NovaAccess.scroll(a.optString("direction", "down")).also { Thread.sleep(500) }
+            "phone_button" -> NovaAccess.global(a.optString("button")).also { Thread.sleep(600) }
+            "notion_search" -> Notion.search(a.optString("query"))
+            "notion_create_page" -> Notion.createPage(a.optString("title"), a.optString("content"), a.optString("parent"))
+            "notion_append" -> Notion.append(a.optString("page"), a.optString("content"))
+            "notion_read" -> Notion.read(a.optString("page"))
             "set_alarm" -> alarm(a.optInt("hour"), a.optInt("minute"), a.optString("label"))
             "set_timer" -> timer(a.optInt("seconds"), a.optString("label"))
             "flashlight" -> torch(a.optBoolean("on", true))
@@ -84,6 +107,21 @@ class Tools(private val ctx: Context) {
         }
     } catch (e: Exception) {
         JSONObject().put("status", "error").put("error", e.message ?: e.toString())
+    }
+
+    /** Gmail API if connected; otherwise open the Gmail app and read the inbox from the screen. */
+    private fun checkEmail(q: String): JSONObject {
+        val r = Gmail.check(ctx, q)
+        if (r.optString("status") != "gmail_not_connected") return r
+        if (NovaAccess.svc != null) {
+            val o = openApp("gmail")
+            if (o.optString("status") == "opened") {
+                Thread.sleep(2500)
+                return NovaAccess.readScreen().put("source", "Gmail app screen (inbox)")
+                    .put("note", "This is the Gmail inbox as shown on screen. To open a mail, tap its subject, then read_screen.")
+            }
+        }
+        return r
     }
 
     private fun enc(s: String) = URLEncoder.encode(s, "UTF-8")

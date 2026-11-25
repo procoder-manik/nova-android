@@ -75,9 +75,10 @@ label{display:block;font-size:13px;color:var(--dim);margin:9px 0 5px}
   <div class="dates"><b id="clk">--:--</b><br><span id="d1"></span><br><span id="d2"></span></div>
   <div class="stage"><canvas id="core"></canvas></div>
   <div class="status"><div class="s" id="st-s">STANDBY</div><div class="t" id="st-t"></div></div>
-  <div class="log" id="log"><div class="hint" id="welcome">ডাকুন <b>“Nova”</b> — বা মাঝের বৃত্তে ট্যাপ করুন।<br>থামাতে বলুন <b>“Stop”</b>।<br>“WhatsApp-এ নতুন কী এসেছে?” · “আমার ইমেইল দেখো” · “সকাল ৭টায় অ্যালার্ম দাও”</div></div>
+  <div class="log" id="log"><div class="hint" id="welcome">ডাকুন <b>“Nova”</b> — বা মাঝের বৃত্তে ট্যাপ করুন।<br>থামাতে বলুন <b>“Stop”</b>।<br>“আজ আমার মিটিং আছে?” · “আমার ইমেইল দেখো” · “Samsung Notes-এ একটা নোট লেখো” · “সকাল ৭টায় অ্যালার্ম দাও”</div></div>
   <div class="chips">
     <button class="chip" onclick="say('আজকের বাংলাদেশের প্রধান খবরগুলো সংক্ষেপে বলো, সোর্সসহ')">📰 খবর</button>
+    <button class="chip" onclick="say('আজ আর কাল আমার ক্যালেন্ডারে কী কী মিটিং আছে?')">📅 মিটিং</button>
     <button class="chip" onclick="say('আমার Gmail-এ নতুন কী ইমেইল এসেছে দেখো')">✉ ইমেইল</button>
     <button class="chip" onclick="say('WhatsApp আর মেসেজে নতুন কী এসেছে দেখো')">☏ মেসেজ</button>
     <button class="chip" onclick="say('Open YouTube')">▶ YouTube</button>
@@ -121,10 +122,14 @@ label{display:block;font-size:13px;color:var(--dim);margin:9px 0 5px}
   </div>
   <div class="sec"><div class="sec-t">⑤ GMAIL</div>
     <div class="row"><button class="btn primary" onclick="A.connectGmail()">Connect Gmail</button><span id="s-gmail" class="ok"></span></div>
-    <div class="help">শুধু পড়ার অনুমতি (read-only)। প্রথমবারের আগে Google Cloud-এ একবার সেটআপ লাগবে — README দেখুন। সেটআপ না থাকলেও Nova Gmail-এর নোটিফিকেশন পড়ে বলতে পারবে।</div>
+    <div class="help">সেটআপ ছাড়াই: “See & use apps” চালু থাকলে Nova নিজে Gmail অ্যাপ খুলে ইনবক্স পড়ে শোনাবে। Connect Gmail (ঐচ্ছিক) করলে অ্যাপ না খুলেই পড়বে — এর জন্য Google Cloud-এ একবার সেটআপ লাগে (README)।</div>
+  </div>
+  <div class="sec"><div class="sec-t">NOTION</div>
+    <input id="s-notion" type="password" placeholder="Paste Notion integration secret (empty = keep current)">
+    <div class="help"><a onclick="A.openUrl('https://www.notion.so/profile/integrations')">notion.so/profile/integrations</a> → New integration → Secret কপি করে এখানে দিন। তারপর Notion-এ যে পেজে লিখবে সেখানে ••• → Connections → integration যোগ করুন। <span id="s-notionok" class="ok"></span><br>Notion ছাড়াও Nova ফোনের Notes / Keep অ্যাপ খুলে নিজে লিখতে পারে (“See & use apps” চালু থাকলে)।</div>
   </div>
   <div class="sec"><div class="sec-t">⑥ PERMISSIONS</div><div id="perms"></div>
-    <div class="help">“Display over other apps” দিলে ফোন লক/ব্যাকগ্রাউন্ডে থাকলেও Nova অ্যাপ খুলতে পারবে। “Battery” দিলে Android Nova-কে বন্ধ করবে না।</div>
+    <div class="help"><b>“See & use apps”</b> বা <b>Notification access</b> চালু করতে না দিলে (Restricted setting): <a onclick="A.grant('restricted')">App info খুলুন</a> → ওপরে ডানে ⋮ → <b>Allow restricted settings</b> → তারপর আবার Allow চাপুন।<br>“Display over other apps” দিলে ব্যাকগ্রাউন্ড থেকেও অ্যাপ খুলতে পারবে। “Battery” দিলে Android Nova-কে বন্ধ করবে না।</div>
   </div>
   <div class="sec"><div class="sec-t">⑦ MEMORY</div><div id="mem"></div></div>
   <div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn" onclick="closeSheets()">Cancel</button><button class="btn primary" onclick="saveSettings()">Save</button></div>
@@ -192,10 +197,10 @@ refresh();
 setTimeout(()=>{ if(!$('welcome')) return; const h=(st.history||[]).slice(-6); if(h.length){ $('welcome').remove(); h.forEach(x=>{ if(x.r==='tool') return; addMsg(x.r,x.x,true) }) } },300);
 
 /* settings */
-const PL={mic:['Microphone','কথা শোনার জন্য'],contacts:['Contacts','নাম ধরে কল/মেসেজ'],calls:['Phone calls','সরাসরি কল করতে'],notifications:['Notification access','WhatsApp/Gmail/SMS পড়তে'],overlay:['Display over other apps','ব্যাকগ্রাউন্ড থেকে অ্যাপ খুলতে'],battery:['Battery (unrestricted)','সবসময় “Nova” শুনতে']};
+const PL={mic:['Microphone','কথা শোনার জন্য'],access:['See & use apps (Accessibility)','যেকোনো অ্যাপের ভেতর দেখা, ট্যাপ, লেখা'],calendar:['Calendar','মিটিং/ইভেন্ট দেখা ও যোগ করা'],contacts:['Contacts','নাম ধরে কল/মেসেজ'],calls:['Phone calls','সরাসরি কল করতে'],notifications:['Notification access','WhatsApp/Gmail/SMS পড়তে'],overlay:['Display over other apps','ব্যাকগ্রাউন্ড থেকে অ্যাপ খুলতে'],battery:['Battery (unrestricted)','সবসময় “Nova” শুনতে']};
 function openSettings(first){ refresh(); $('s-name').value=st.user_name||''; $('s-keyok').textContent=st.has_key?'✔ key saved':(first?'← প্রথমে key দিন':'');
   $('s-wake').checked=!!st.wake_word; $('s-wakest').textContent={downloading:'(downloading…)',error:'(error)'}[st.wake_status]||'';
-  $('s-gmail').textContent=st.gmail?'✔ connected':'';
+  $('s-gmail').textContent=st.gmail?'✔ connected':''; $('s-notionok').textContent=st.has_notion?'✔ Notion connected':'';
   $('s-active').value=String(st.active_seconds||15); if(!$('s-active').value){ $('s-active').add(new Option(st.active_seconds+' সেকেন্ড',st.active_seconds)); $('s-active').value=String(st.active_seconds) }
   $('s-micmode').value=st.mic_mode||'near'; $('s-screenoff').checked=st.screen_off_listen!==false;
   $('s-orb').checked=st.floating_orb!==false; $('s-op').value=st.orb_opacity||85; $('s-opv').textContent=st.orb_opacity||85;
@@ -204,8 +209,8 @@ function openSettings(first){ refresh(); $('s-name').value=st.user_name||''; $('
   const m=st.memories||[]; $('mem').innerHTML=m.length?m.slice().reverse().map(f=>`<div class="mem"><div>${esc(f.fact)}</div><button onclick='A.forget(${JSON.stringify(f.fact)});openSettings()'>✕</button></div>`).join(''):'<div class="help">এখনো কিছু মনে রাখেনি। বলুন: “Nova, মনে রেখো …”</div>';
   $('settings').classList.add('on') }
 function fillVoices(g){ $('g-f').classList.toggle('sel',g==='f'); $('g-m').classList.toggle('sel',g==='m'); const l=(g==='m'?st.male:st.female)||[]; $('s-voice').innerHTML=l.map(v=>`<option ${v===st.voice?'selected':''}>${v}</option>`).join('') }
-function saveSettings(){ A.save(JSON.stringify({api_key:$('s-key').value,user_name:$('s-name').value,voice:$('s-voice').value,wake_word:$('s-wake').checked,
-  active_seconds:+$('s-active').value,mic_mode:$('s-micmode').value,screen_off_listen:$('s-screenoff').checked,floating_orb:$('s-orb').checked,orb_opacity:+$('s-op').value})); $('s-key').value=''; closeSheets(); toast('Saved ✔',2000) }
+function saveSettings(){ A.save(JSON.stringify({api_key:$('s-key').value,notion_token:$('s-notion').value,user_name:$('s-name').value,voice:$('s-voice').value,wake_word:$('s-wake').checked,
+  active_seconds:+$('s-active').value,mic_mode:$('s-micmode').value,screen_off_listen:$('s-screenoff').checked,floating_orb:$('s-orb').checked,orb_opacity:+$('s-op').value})); $('s-key').value=''; $('s-notion').value=''; closeSheets(); toast('Saved ✔',2000) }
 
 /* dates: English · বাংলা · বঙ্গাব্দ · হিজরি */
 const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
